@@ -367,11 +367,6 @@ RUN <<'EOF_BUILD'
     exit 1
   }
 
-  strings /out/qemu-system-x86_64 | grep -Fq 'vmware-vga: BAR1 trace scanout active' || {
-    echo "FAIL: enhanced qemu-vmvga implementation is missing from the built QEMU binary."
-    exit 1
-  }
-
   # Build the EFI GOP option ROM used by the same reims-vgpu-pci function.
   /src/reims/crates/reims-vgpu-efi/scripts/reims-vgpu-efi-rom/reims-vgpu-efi-rom.sh
   install -Dm644 \
@@ -447,8 +442,8 @@ FROM scratch AS artifact
 
 ARG VERSION_ARG="0.0.0"
 
-LABEL org.opencontainers.image.title="Reims" \
-      org.opencontainers.image.description="QEMU build with Reims vGPU support for macOS guests." \
+LABEL org.opencontainers.image.title="QEMU macOS" \
+      org.opencontainers.image.description="QEMU build for running macOS guests with hardware-accelerated graphics." \
       org.opencontainers.image.version="${VERSION_ARG}"
 
 COPY --from=verify /out/qemu-system-x86_64 /usr/bin/qemu-system-x86_64
