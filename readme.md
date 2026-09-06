@@ -1,4 +1,4 @@
-<h1 align="center">QEMU Reims<br />
+<h1 align="center">QEMU macOS<br />
 <div align="center">
   
 [![Build]][build_url]
@@ -7,7 +7,7 @@
 
 </div></h1>
 
-Custom QEMU build with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated macOS graphics.
+Custom Linux build of QEMU for running macOS guests, with [Reims vGPU](https://github.com/steelbrain/reims-vgpu) support for hardware-accelerated graphics.
 
 ## What is Reims? 🚀
 
@@ -58,9 +58,9 @@ This build also includes an enhanced [SVGA](https://github.com/qemus/qemu-vmvga)
 
 Special thanks to [steelbrain](https://github.com/steelbrain), this project would not exist without his invaluable work.
 
-[build_url]: https://github.com/qemus/qemu-reims/
-[release_url]: https://github.com/qemus/qemu-reims/releases/
+[build_url]: https://github.com/qemus/qemu-macos/
+[release_url]: https://github.com/qemus/qemu-macos/releases/
 
-[Build]: https://github.com/qemus/qemu-reims/actions/workflows/build.yml/badge.svg
+[Build]: https://github.com/qemus/qemu-macos/actions/workflows/build.yml/badge.svg
 [Size]: https://img.shields.io/badge/size-41.7_MB-steelblue?style=flat&color=066da5
-[Version]: https://img.shields.io/github/v/tag/qemus/qemu-reims?label=version&sort=semver&color=066da5
+[Version]: https://img.shields.io/github/v/tag/qemus/qemu-macos?label=version&sort=semver&color=066da5
