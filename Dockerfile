@@ -267,8 +267,11 @@ RUN <<'EOF_BUILD'
     --extra-cflags="$extra_cflags" \
     --extra-ldflags="$extra_ldflags" \
     --audio-drv-list=alsa,oss \
+    --disable-af-xdp \
     --disable-blkio \
+    --disable-brlapi \
     --disable-bzip2 \
+    --disable-capstone \
     --disable-cocoa \
     --disable-containers \
     --disable-curl \
@@ -278,33 +281,31 @@ RUN <<'EOF_BUILD'
     --disable-hvf \
     --disable-install-blobs \
     --disable-jack \
-    --disable-af-xdp \
     --disable-libcbor \
-    --disable-lzo \
-    --disable-snappy \
     --disable-libiscsi \
     --disable-libnfs \
     --disable-libssh \
     --disable-linux-user \
+    --disable-lzo \
     --disable-modules \
     --disable-pa \
     --disable-pipewire \
     --disable-rbd \
+    --disable-rdma \
     --disable-relocatable \
     --disable-sdl \
+    --disable-snappy \
     --disable-sndio \
     --disable-strip \
     --disable-tools \
     --disable-user \
+    --disable-vde \
     --disable-vte \
-    --disable-xkbcommon \
     --disable-xen \
-    --enable-system \
+    --disable-xkbcommon \
     --enable-attr \
     --enable-bpf \
-    --enable-brlapi \
     --enable-cap-ng \
-    --enable-capstone \
     --enable-curses \
     --enable-fdt \
     --enable-fuse \
@@ -320,14 +321,13 @@ RUN <<'EOF_BUILD'
     --enable-opengl \
     --enable-pixman \
     --enable-png \
-    --enable-rdma \
     --enable-seccomp \
     --enable-slirp \
     --enable-smartcard \
     --enable-spice \
+    --enable-system \
     --enable-tcg \
     --enable-usb-redir \
-    --enable-vde \
     --enable-vhost-net \
     --enable-vhost-user \
     --enable-vhost-vdpa \
