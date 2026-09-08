@@ -238,6 +238,21 @@ RUN <<EOF_SOURCE
     berkeley-testfloat-3
 EOF_SOURCE
 
+# General QEMU compatibility patches maintained by qemu-macos.
+COPY patches /tmp/qemu-macos-patches
+
+RUN <<'EOF_PATCHES'
+  set -eu
+
+  for patch in /tmp/qemu-macos-patches/*.patch; do
+    echo "Applying qemu-macos ${patch##*/}..."
+    git -C /src/qemu apply --recount --check "$patch"
+    git -C /src/qemu apply --recount "$patch"
+  done
+
+  git -C /src/qemu diff --check
+EOF_PATCHES
+
 RUN <<'EOF_BUILD'
   set -eu
 
