@@ -12,7 +12,7 @@ index df0d33a..83b5af4 100644
  #include "hw/i386/x86.h"
  #include "hw/i386/kvm/xen_evtchn.h"
  #include "hw/i386/pc.h"
-@@ -2217,6 +2219,157 @@ static void kvm_init_pmu_info_amd(struct kvm_cpuid2 *cpuid, X86CPU *cpu)
+@@ -2217,6 +2219,169 @@ static void kvm_init_pmu_info_amd(struct kvm_cpuid2 *cpuid, X86CPU *cpu)
      }
  }
  
@@ -92,7 +92,7 @@ index df0d33a..83b5af4 100644
 +    return false;
 +}
 +
-+static void kvm_init_performance_core_affinity(CPUState *cs)
++static int kvm_init_performance_core_affinity(CPUState *cs)
 +{
 +    unsigned long *allowed_cpus = NULL;
 +    unsigned long *performance_cpus = NULL;
@@ -105,12 +105,12 @@ index df0d33a..83b5af4 100644
 +
 +    hybrid_type = kvm_host_hybrid_type();
 +    if (hybrid_type == KVM_HOST_HYBRID_NONE) {
-+        return;
++        return 0;
 +    }
 +
 +    err = qemu_thread_get_affinity(cs->thread, &allowed_cpus, &nbits);
 +    if (err) {
-+        return;
++        return 0;
 +    }
 +
 +    performance_cpus = bitmap_new(nbits);
@@ -133,6 +133,11 @@ index df0d33a..83b5af4 100644
 +    }
 +
 +    restore_err = qemu_thread_set_affinity(cs->thread, allowed_cpus, nbits);
++    if (restore_err) {
++        warn_report("failed to restore KVM vCPU thread affinity after "
++                    "performance-core probing: %s",
++                    strerror(restore_err < 0 ? -restore_err : restore_err));
++    }
 +    if (!err && !restore_err &&
 +        !bitmap_empty(performance_cpus, nbits) &&
 +        !bitmap_equal(performance_cpus, allowed_cpus, nbits)) {
@@ -144,37 +149,47 @@ index df0d33a..83b5af4 100644
 +    g_free(single_cpu);
 +    g_free(performance_cpus);
 +    g_free(allowed_cpus);
++
++    return restore_err > 0 ? -restore_err : restore_err;
 +}
 +
-+static void kvm_apply_performance_core_affinity(CPUState *cs)
++static int kvm_apply_performance_core_affinity(CPUState *cs)
 +{
-+    int err;
++    int err = 0;
 +
 +    if (g_once_init_enter(&kvm_performance_cpus_initialized)) {
-+        kvm_init_performance_core_affinity(cs);
++        err = kvm_init_performance_core_affinity(cs);
 +        g_once_init_leave(&kvm_performance_cpus_initialized, 1);
++    }
++    if (err < 0) {
++        return err;
 +    }
 +
 +    if (!kvm_performance_cpus) {
-+        return;
++        return 0;
 +    }
 +
 +    err = qemu_thread_set_affinity(cs->thread, kvm_performance_cpus,
 +                                   kvm_performance_cpus_nbits);
 +    if (err) {
 +        warn_report("failed to restrict KVM vCPU thread to performance "
-+                    "cores: %s", strerror(err));
++                    "cores: %s", strerror(err < 0 ? -err : err));
 +    }
++
++    return 0;
 +}
 +
  static bool is_host_compat_vendor(CPUX86State *env)
  {
      char host_vendor[CPUID_VENDOR_SZ + 1];
-@@ -2293,6 +2446,8 @@ int kvm_arch_init_vcpu(CPUState *cs)
+@@ -2293,6 +2446,11 @@ int kvm_arch_init_vcpu(CPUState *cs)
      int r;
      Error *local_err = NULL;
  
-+    kvm_apply_performance_core_affinity(cs);
++    r = kvm_apply_performance_core_affinity(cs);
++    if (r < 0) {
++        return r;
++    }
 +
      if (current_machine->cgs) {
          r = x86_confidential_guest_check_features(

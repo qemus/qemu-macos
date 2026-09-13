@@ -3,9 +3,9 @@
 FROM registry.gitlab.com/qemu-project/qemu/qemu/debian:latest AS builder
 
 ARG VERSION_ARG="0.0.0"
-ARG QEMU_VERSION="11.1.0"
+ARG QEMU_VERSION="11.1.1"
 
-ARG QEMU_REF="84f07211cc5b4fc6a371559bf8a5de4fb068e648"
+ARG QEMU_REF="c3d48b7d1e89604920e5b81b91140c2ad39a1943"
 ARG REIMS_REF="2844274c34baa1043d37995f5b1a9f1d265eae03"
 ARG REIMS_QEMU_REF="e17ddb98f71df5697daf2f830587f672a8f4f5a7"
 ARG REIMS_QEMU_BASE="b83371668192a705b878e909c5ae9c1233cbd5fb"
@@ -99,7 +99,7 @@ RUN <<EOF_SOURCE
   fi
 
   # Populate the author's pinned QEMU fork only as the source of the Reims
-  # device delta. The binary itself is built from upstream QEMU 11.1.0 below.
+  # device delta. The binary itself is built from upstream QEMU 11.1.1 below.
   git -C reims submodule update --init --depth=1 vendor/qemu
 
   actual="$(git -C reims/vendor/qemu rev-parse HEAD)"
@@ -114,7 +114,7 @@ RUN <<EOF_SOURCE
   git -C reims/vendor/qemu remote add upstream https://github.com/qemu/qemu.git
   git -C reims/vendor/qemu fetch --depth=1 upstream "${REIMS_QEMU_BASE}"
 
-  # Fetch the exact upstream QEMU 11.1.0 release commit into a sibling source
+  # Fetch the exact upstream QEMU 11.1.1 release commit into a sibling source
   # directory. Keeping it under reims/vendor preserves Reims' existing Meson
   # assumption that the parent project is two directories above QEMU.
   git init reims/vendor/qemu-11.1
@@ -134,9 +134,9 @@ RUN <<EOF_SOURCE
     exit 1
   fi
 
-  # Port only the Reims display/device integration onto QEMU 11.1.0. Deliberately
+  # Port only the Reims display/device integration onto QEMU 11.1.1. Deliberately
   # exclude the fork's unrelated vmapple/HVF/ARM changes. Modified integration
-  # files were unchanged upstream between REIMS_QEMU_BASE and QEMU 11.1.0; the
+  # files were unchanged upstream between REIMS_QEMU_BASE and QEMU 11.1.1; the
   # apply --check below also makes future accidental incompatibility fail hard.
   git -C reims/vendor/qemu diff --binary \
     "${REIMS_QEMU_BASE}" "${REIMS_QEMU_REF}" -- \
@@ -365,7 +365,7 @@ RUN <<'EOF_BUILD'
   install -Dm755 /build/qemu-system-x86_64 /out/qemu-system-x86_64
   strip --strip-unneeded /out/qemu-system-x86_64
 
-  /out/qemu-system-x86_64 --version | grep -F "QEMU emulator version 11.1.0"
+  /out/qemu-system-x86_64 --version | grep -F "QEMU emulator version 11.1.1"
 
   # Reims is compiled into this QEMU binary rather than loaded as a QEMU module.
   /out/qemu-system-x86_64 -device reims-vgpu-pci,help >/dev/null 2>&1 || {
@@ -414,7 +414,7 @@ RUN <<'EOF_VERIFY'
   # Eager binding is intentionally only a publication-time compatibility test.
   # dockur/macOS does not need LD_BIND_NOW when it later copies this executable.
   LD_BIND_NOW=1 "$binary" --version \
-    | grep -F "QEMU emulator version 11.1.0"
+    | grep -F "QEMU emulator version 11.1.1"
 
   # Probe normal QEMU operation separately from eager ELF binding. The binary
   # is built with QEMU modules disabled, so no QEMU_MODULE_DIR override is needed.
