@@ -219,16 +219,16 @@ RUN <<EOF_SOURCE
     exit 1
   fi
 
-  # Overlay the latest enhanced VMware SVGA II implementation onto the same
-  # QEMU 11.1 source tree that contains the Reims integration. qemu-vmvga is
-  # source-only: its vmware_vga.c and VMware headers are compiled by QEMU.
+  # Overlay the latest enhanced VMware implementation onto the same QEMU 11.1
+  # source tree that contains the Reims integration. qemu-vmvga is source-only:
+  # its complete hw/ files are compiled by QEMU in place of the upstream files.
   vmvga_commit="$(git -C qemu-vmvga rev-parse HEAD)"
   echo "Using qemu-vmvga commit $vmvga_commit"
 
-  vmvga_source="qemu-vmvga/hw/display"
-  qemu_display="reims/vendor/qemu-11.1/hw/display"
+  vmvga_hw="qemu-vmvga/hw"
+  qemu_hw="reims/vendor/qemu-11.1/hw"
 
-  cp -a "$vmvga_source/." "$qemu_display/"
+  cp -a "$vmvga_hw/." "$qemu_hw/"
 
   # Keep QEMU configure offline after source preparation. These Meson wraps are
   # needed by the same system-only build configuration used by qemus/qemu.
