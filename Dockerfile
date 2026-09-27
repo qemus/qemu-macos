@@ -221,11 +221,11 @@ RUN <<'EOF_PATCHES'
 
   for patch in /tmp/qemu-macos-patches/*.patch; do
     echo "Applying qemu-macos ${patch##*/}..."
-    git -C /src/qemu apply --recount --check "$patch"
-    git -C /src/qemu apply --recount "$patch"
+    git -C /src/reims/vendor/qemu-11.1 apply --recount --check "$patch"
+    git -C /src/reims/vendor/qemu-11.1 apply --recount "$patch"
   done
 
-  git -C /src/qemu diff --check
+  git -C /src/reims/vendor/qemu-11.1 diff --check
 EOF_PATCHES
 
 RUN <<'EOF_BUILD'
