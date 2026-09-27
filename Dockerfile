@@ -6,8 +6,8 @@ ARG VERSION_ARG="0.0.0"
 ARG QEMU_VERSION="11.1.1"
 
 ARG QEMU_REF="c3d48b7d1e89604920e5b81b91140c2ad39a1943"
-ARG REIMS_REF="2844274c34baa1043d37995f5b1a9f1d265eae03"
-ARG REIMS_QEMU_REF="e17ddb98f71df5697daf2f830587f672a8f4f5a7"
+ARG REIMS_REF="69a57dd69a6958e946c03b73e02db331f330f435"
+ARG REIMS_QEMU_REF="bd88218da09b86ed9c78bf5f9354168812a7ba6b"
 ARG REIMS_QEMU_BASE="b83371668192a705b878e909c5ae9c1233cbd5fb"
 
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -171,31 +171,6 @@ RUN <<EOF_SOURCE
 
   sed -i "s|$old|$new|" "$meson_file"
   git -C reims/vendor/qemu-11.1 add hw/display/meson.build
-
-  # Reims' queue-owner presentation helper uses a host-window-only type, but
-  # the helper itself is missing the matching feature guard upstream. Add the
-  # same guard as its caller so the Vulkan backend builds without host-window.
-  queue_owner="reims/crates/reims-vgpu/src/backend/vulkan/engine/queue_owner.rs"
-  old='    pub(crate) fn enqueue_present('
-
-  count="$(grep -Fxc "$old" "$queue_owner")"
-  if [ "$count" -ne 1 ]; then
-    echo "FAIL: expected exactly one unguarded Reims enqueue_present method, found $count."
-    exit 1
-  fi
-
-  already_guarded="$(awk '
-    prev == "    #[cfg(feature = \"host-window\")]" && $0 == "    pub(crate) fn enqueue_present(" { n++ }
-    { prev = $0 }
-    END { print n + 0 }
-  ' "$queue_owner")"
-  if [ "$already_guarded" -ne 0 ]; then
-    echo "FAIL: Reims enqueue_present already has a host-window feature guard."
-    exit 1
-  fi
-
-  sed -i '/^    pub(crate) fn enqueue_present($/i\    #[cfg(feature = "host-window")]' "$queue_owner"
-  git -C reims diff --check -- crates/reims-vgpu/src/backend/vulkan/engine/queue_owner.rs
 
   git -C reims/vendor/qemu-11.1 diff --cached --check
 
