@@ -80,8 +80,6 @@ RUN <<EOF_VIRGL
   ldconfig
 EOF_VIRGL
 
-ADD --keep-git-dir=true https://github.com/qemus/qemu-vmvga.git#master /src/qemu-vmvga
-
 RUN <<EOF_SOURCE
   set -eu
 
@@ -193,17 +191,6 @@ RUN <<EOF_SOURCE
     printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "$actual"
     exit 1
   fi
-
-  # Overlay the latest enhanced VMware implementation onto the same QEMU 11.1
-  # source tree that contains the Reims integration. qemu-vmvga is source-only:
-  # its complete hw/ files are compiled by QEMU in place of the upstream files.
-  vmvga_commit="$(git -C qemu-vmvga rev-parse HEAD)"
-  echo "Using qemu-vmvga commit $vmvga_commit"
-
-  vmvga_hw="qemu-vmvga/hw"
-  qemu_hw="reims/vendor/qemu-11.1/hw"
-
-  cp -a "$vmvga_hw/." "$qemu_hw/"
 
   # Keep QEMU configure offline after source preparation. These Meson wraps are
   # needed by the same system-only build configuration used by qemus/qemu.
