@@ -80,8 +80,6 @@ RUN <<EOF_VIRGL
   ldconfig
 EOF_VIRGL
 
-ADD --keep-git-dir=true https://github.com/qemus/qemu-vmvga.git#master /src/qemu-vmvga
-
 RUN <<EOF_SOURCE
   set -eu
 
