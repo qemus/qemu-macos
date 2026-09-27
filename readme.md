@@ -50,10 +50,6 @@ Physical GPU
 - A Vulkan 1.2 or newer host driver.
 - The Reims GOP option ROM for EFI display output.
 
-## VMVGA 🖥️
-
-This build includes [VMVGA](https://github.com/qemus/qemu-vmvga), a virtual graphics adapter implementing the VMware SVGA interface, to improve performance even when the Reims vGPU is disabled.
-
 ## Acknowledgements 🙏
 
 Special thanks to [steelbrain](https://github.com/steelbrain), this project would not exist without his invaluable work.
