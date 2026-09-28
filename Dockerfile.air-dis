@@ -1,0 +1,85 @@
+# syntax=docker/dockerfile:1
+
+FROM debian:trixie-slim AS builder
+
+ARG LLVM_VERSION="19"
+ARG DEBIAN_FRONTEND="noninteractive"
+
+RUN <<EOF_BUILD_DEPS
+  set -eu
+
+  apt-get update
+  apt-get install --no-install-recommends -y \
+    build-essential \
+    llvm-${LLVM_VERSION}-dev
+
+  rm -rf /var/lib/apt/lists/*
+EOF_BUILD_DEPS
+
+COPY air-dis.c /src/air-dis.c
+
+RUN <<EOF_BUILD
+  set -eu
+
+  llvm_config="llvm-config-${LLVM_VERSION}"
+  llvm_as="llvm-as-${LLVM_VERSION}"
+
+  "$llvm_config" --version
+
+  cc -O2 -ffunction-sections -fdata-sections \
+    -I"$("$llvm_config" --includedir)" \
+    -c /src/air-dis.c \
+    -o /tmp/air-dis.o
+
+  llvm_libs="$("$llvm_config" --link-static --libs bitreader core)"
+  system_libs="$("$llvm_config" --link-static --system-libs | sed 's/-lxml2//g;s/-lz3//g')"
+
+  # Keep LLVM itself out of the runtime dependency tree. Only the small
+  # component closure needed for bitcode reading and IR printing is linked in.
+  # shellcheck disable=SC2086
+  c++ -static-libstdc++ -static-libgcc -Wl,--gc-sections \
+    -o /air-dis \
+    /tmp/air-dis.o \
+    $llvm_libs \
+    $system_libs
+
+  strip --strip-unneeded /air-dis
+
+  deps="$(ldd /air-dis 2>&1)"
+  printf '%s\n' "$deps"
+
+  if printf '%s\n' "$deps" | grep -qi 'libLLVM'; then
+    echo "FAIL: air-dis still depends on the shared LLVM runtime."
+    exit 1
+  fi
+
+  if printf '%s\n' "$deps" | grep -q 'not found'; then
+    echo "FAIL: air-dis has an unresolved runtime dependency."
+    exit 1
+  fi
+
+  cat > /tmp/air-dis-test.ll <<'EOF_TEST'
+target datalayout = "e-p:64:64"
+target triple = "air64-apple-macosx"
+
+define void @fmain() {
+entry:
+  ret void
+}
+
+!air.fragment = !{!0}
+!0 = !{ptr @fmain, !1, !1}
+!1 = !{}
+EOF_TEST
+
+  "$llvm_as" /tmp/air-dis-test.ll -o /tmp/air-dis-test.bc
+  /air-dis /tmp/air-dis-test.bc -o /tmp/air-dis-test.out.ll
+
+  grep -F 'target datalayout = "e-p:64:64"' /tmp/air-dis-test.out.ll
+  grep -F '!air.fragment' /tmp/air-dis-test.out.ll
+  /air-dis --version
+  du -h /air-dis
+EOF_BUILD
+
+FROM scratch AS artifact
+COPY --from=builder /air-dis /air-dis
