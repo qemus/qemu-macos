@@ -11,7 +11,9 @@ RUN <<EOF_BUILD_DEPS
   apt-get update
   apt-get install --no-install-recommends -y \
     build-essential \
-    llvm-${LLVM_VERSION}-dev
+    libzstd-dev \
+    llvm-${LLVM_VERSION}-dev \
+    zlib1g-dev
 
   rm -rf /var/lib/apt/lists/*
 EOF_BUILD_DEPS
@@ -31,6 +33,7 @@ RUN <<EOF_BUILD
     -c /src/air-dis.c \
     -o /tmp/air-dis.o
 
+  llvm_libdir="$("$llvm_config" --libdir)"
   llvm_libs="$("$llvm_config" --link-static --libs bitreader core)"
   system_libs="$("$llvm_config" --link-static --system-libs | sed 's/-lxml2//g;s/-lz3//g')"
 
@@ -38,6 +41,7 @@ RUN <<EOF_BUILD
   # component closure needed for bitcode reading and IR printing is linked in.
   # shellcheck disable=SC2086
   c++ -static-libstdc++ -static-libgcc -Wl,--gc-sections \
+    -L"$llvm_libdir" \
     -o /air-dis \
     /tmp/air-dis.o \
     $llvm_libs \
