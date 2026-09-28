@@ -56,6 +56,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       -
+        name: Build AIR disassembler
+        run: |
+          docker buildx build \
+            --file Dockerfile.air-dis \
+            --output type=local,dest=. \
+            .
+          chmod 755 ./air-dis
+          test -s ./air-dis
+          if readelf -d ./air-dis | grep -qi 'NEEDED.*libLLVM'; then
+            echo "FAIL: air-dis still depends on the shared LLVM runtime."
+            exit 1
+          fi
+      -
         name: Build Docker image
         uses: docker/build-push-action@v7
         with:
@@ -83,7 +96,7 @@ jobs:
           chmod 644 ./reims-vgpu-gop.rom
           test -s ./qemu-system-x86_64
           test -s ./reims-vgpu-gop.rom
-          sha256sum ./qemu-system-x86_64 ./reims-vgpu-gop.rom
+          sha256sum ./qemu-system-x86_64 ./reims-vgpu-gop.rom ./air-dis
       -
         name: Create a release
         uses: action-pack/github-release@v2
@@ -99,6 +112,7 @@ jobs:
           gh release upload "v${VERSION}" \
             ./qemu-system-x86_64 \
             ./reims-vgpu-gop.rom \
+            ./air-dis \
             --clobber
       -
         name: Increment version variable
