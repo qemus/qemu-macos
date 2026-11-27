@@ -1,0 +1,47 @@
+From: Eric X. Liu <eric@ericxliu.me>
+Date: Thu, 26 Nov 2026 12:06:00 -0800
+Subject: [PATCH] ui/vnc: target 60 Hz refresh and wake immediately on display update
+
+QEMU's VNC server defaults to `VNC_REFRESH_INTERVAL_BASE = 30 ms` (33.3 FPS
+ceiling) and adds `VNC_REFRESH_INTERVAL_INC = 50 ms` on any tick without a
+dirty update. Furthermore, `vnc_dpy_update()` marks dirty bits without
+shortening `vd->dcl.update_interval`, so when a GPU-accelerated guest
+presents a new frame after a brief idle pause (or misses a 30 ms tick by 1 ms),
+VNC frames are delayed by 60-300+ ms.
+
+Set both `VNC_REFRESH_INTERVAL_BASE` and `VNC_REFRESH_INTERVAL_INC` to 16 ms
+(~62.5 Hz) and reset the refresh interval to `VNC_REFRESH_INTERVAL_BASE`
+inside `vnc_dpy_update()` whenever at least one VNC client is connected.
+---
+ ui/vnc.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/ui/vnc.c b/ui/vnc.c
+index 1111111..2222222 100644
+--- a/ui/vnc.c
++++ b/ui/vnc.c
+@@ -58,8 +58,8 @@
+ #include "io/dns-resolver.h"
+ #include "monitor/monitor.h"
+ 
+-#define VNC_REFRESH_INTERVAL_BASE GUI_REFRESH_INTERVAL_DEFAULT
+-#define VNC_REFRESH_INTERVAL_INC  50
++#define VNC_REFRESH_INTERVAL_BASE 16
++#define VNC_REFRESH_INTERVAL_INC  16
+ #define VNC_REFRESH_INTERVAL_MAX  GUI_REFRESH_INTERVAL_IDLE
+ static const struct timeval VNC_REFRESH_STATS = { 0, 500000 };
+ static const struct timeval VNC_REFRESH_LOSSY = { 2, 0 };
+@@ -657,6 +657,11 @@ static void vnc_dpy_update(DisplayChangeListener *dcl,
+     struct VncSurface *s = &vd->guest;
+ 
+     vnc_set_area_dirty(s->dirty, vd, x, y, w, h);
++    if (!QTAILQ_EMPTY(&vd->clients) &&
++        vd->dcl.update_interval > VNC_REFRESH_INTERVAL_BASE) {
++        qemu_console_listener_set_refresh(&vd->dcl,
++                                          VNC_REFRESH_INTERVAL_BASE);
++    }
+ }
+ 
+ void vnc_framebuffer_update(VncState *vs, int x, int y, int w, int h,
+-- 
+2.47.0
