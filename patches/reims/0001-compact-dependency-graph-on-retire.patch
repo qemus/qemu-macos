@@ -1,0 +1,72 @@
+--- a/crates/reims-vgpu-core/src/depend.rs
++++ b/crates/reims-vgpu-core/src/depend.rs
+@@ -84,6 +84,7 @@
+     by_domain: HashMap<ChannelId, Vec<usize>>,
+     domain_only: HashMap<ChannelId, Vec<usize>>,
+     by_ordinal: HashMap<IngressOrdinal, Vec<usize>>,
++    live_count: usize,
+     census: Census,
+     /// Buffers `admit` refills instead of allocating.
+     ///
+@@ -235,6 +236,7 @@
+             intent,
+             live: true,
+         });
++        self.live_count += 1;
+         self.census.accesses += 1;
+         self.census.by_rung[usize::from(intent.key.rung()) - 1] += 1;
+         self.by_domain.entry(intent.domain).or_default().push(idx);
+@@ -260,10 +262,17 @@
+     /// creating edges when the work that declared it has finished, and a caller
+     /// that retires early publishes a hazard it still owes.
+     pub fn retire(&mut self, ordinal: IngressOrdinal) {
+-        for &idx in self.by_ordinal.get(&ordinal).into_iter().flatten() {
+-            self.entries[idx].live = false;
+-        }
+-        self.by_ordinal.remove(&ordinal);
++        if let Some(indices) = self.by_ordinal.remove(&ordinal) {
++            for idx in indices {
++                if self.entries[idx].live {
++                    self.entries[idx].live = false;
++                    self.live_count -= 1;
++                }
++            }
++        }
++        if self.entries.len() >= 256 && self.live_count * 2 <= self.entries.len() {
++            self.compact();
++        }
+     }
+ 
+     /// Drop retired entries and rebuild the indexes.
+@@ -279,6 +288,7 @@
+         self.by_domain.clear();
+         self.domain_only.clear();
+         self.by_ordinal.clear();
++        self.live_count = 0;
+         // The census is a running total across the graph's life and is not
+         // rebuilt: compaction is bookkeeping, and it did not admit anything.
+         let saved = self.census;
+@@ -505,6 +515,23 @@
+         assert_eq!(g.live_accesses(), 1);
+         g.compact();
+         assert_eq!(g.live_accesses(), 1, "only the live access survives");
++    }
++
++    #[test]
++    fn retirement_compacts_dead_entries_to_stay_bounded() {
++        let mut g = DependencyGraph::new();
++        let k = AccessKey::Whole(res(1));
++        for i in 1..=2_000u64 {
++            let o = ord(i);
++            let _ = g.admit(o, &[intent(k, AccessMode::Write)]);
++            g.retire(o);
++        }
++        assert_eq!(g.live_accesses(), 0);
++        assert!(
++            g.entries.len() < 256,
++            "retired entries were not compacted: {}",
++            g.entries.len()
++        );
+     }
+ 
+     /// Compaction is bookkeeping. It must not change an answer, and it must not
