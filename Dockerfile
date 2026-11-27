@@ -200,7 +200,7 @@ RUN <<EOF_SOURCE
     berkeley-testfloat-3
 EOF_SOURCE
 
-# General QEMU compatibility patches maintained by qemu-macos.
+# General QEMU and Reims compatibility patches maintained by qemu-macos.
 COPY patches /tmp/qemu-macos-patches
 
 RUN <<'EOF_PATCHES'
@@ -213,6 +213,17 @@ RUN <<'EOF_PATCHES'
   done
 
   git -C /src/reims/vendor/qemu-11.1 diff --check
+
+  if [ -d /tmp/qemu-macos-patches/reims ]; then
+    for patch in /tmp/qemu-macos-patches/reims/*.patch; do
+      echo "Applying reims ${patch##*/}..."
+      git -C /src/reims apply --recount --check "$patch"
+      git -C /src/reims apply --recount "$patch"
+    done
+
+    git -C /src/reims diff --check
+    cargo test --manifest-path /src/reims/Cargo.toml -p reims-vgpu-core depend
+  fi
 EOF_PATCHES
 
 RUN <<'EOF_BUILD'

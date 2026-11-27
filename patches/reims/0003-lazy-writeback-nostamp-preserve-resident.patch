@@ -1,0 +1,37 @@
+From: Eric X. Liu <eric@ericxliu.me>
+Date: Thu, 26 Nov 2026 12:06:00 -0800
+Subject: [PATCH] draw/vulkan: do not treat GuestWriteVerdict::NoStamp as a guest write on Load
+
+As documented in `surface_currency.rs`, only `GuestWriteVerdict::Wrote` is
+evidence of a guest CPU write; `GuestWriteVerdict::NoStamp` merely means no
+dirty-page tracking stamp was armed for the mapping.
+
+In `mapper_ref_texture_guest_wrote_since_store()`, treating `NoStamp` as
+`true` caused the attachment LOAD path to discard a valid GPU-resident
+surface (whose `resident_content_epoch == mapping_epoch`) and re-seed from
+guest RAM. With `REIMS_VGPU_LAZY_WRITEBACK=on` on discrete NVIDIA GPUs
+(steelbrain/reims-vgpu#101), those guest pages were never written, turning
+composited desktop regions black and forcing users to set
+`REIMS_VGPU_LAZY_WRITEBACK=off` (~1.2 GB/s of eager PCIe GPU->CPU readbacks).
+
+Return `false` for `GuestWriteVerdict::NoStamp` while still rejecting
+`Wrote`, `NoMapping`, and `Unreadable`.
+---
+ crates/reims-vgpu/src/runtime/draw/vulkan.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crates/reims-vgpu/src/runtime/draw/vulkan.rs b/crates/reims-vgpu/src/runtime/draw/vulkan.rs
+index 1111111..2222222 100644
+--- a/crates/reims-vgpu/src/runtime/draw/vulkan.rs
++++ b/crates/reims-vgpu/src/runtime/draw/vulkan.rs
+@@ -10143,7 +10143,7 @@ pub(super) fn mapper_ref_texture_guest_wrote_since_store<M: HostOps>(
+         }
+         GuestWriteVerdict::NoStamp => {
+             crate::runtime::drain::note_store_route("t11_gw_ref_no_stamp");
+-            true
++            false
+         }
+         GuestWriteVerdict::Wrote => {
+             crate::runtime::drain::note_store_route("t11_gw_ref_moved");
+-- 
+2.47.0
